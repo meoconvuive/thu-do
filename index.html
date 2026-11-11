@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>Thử Đồ</title>
+<style>
+  :root{
+    --bg:#0f0f10; --panel:#1a1a1c; --line:#2c2c30; --text:#f2f2f2; --muted:#9a9aa2;
+    --accent:#ff5a5f; --accent2:#ffd166;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100dvh;height:100vh}
+  @supports(height:100dvh){#app{height:100dvh}}
+
+  #stage{position:relative;flex:1;min-height:0;background:#000;overflow:hidden}
+  #video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  #cv{width:100%;height:100%;object-fit:contain;display:block}
+  #cv.mirror{transform:scaleX(-1)}
+
+  #topbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;
+    background:linear-gradient(#000a,#0000)}
+  #status{flex:1;font-size:14px;line-height:1.3;text-shadow:0 1px 2px #000}
+  .iconbtn{width:44px;height:44px;border-radius:50%;border:0;background:#0008;color:#fff;
+    font-size:20px;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(6px)}
+  .iconbtn:active{transform:scale(.94)}
+
+  #start{position:absolute;inset:0;display:grid;place-items:center;background:#000d;padding:24px;text-align:center}
+  #start h1{margin:0 0 8px;font-size:28px}
+  #start p{margin:0 0 20px;color:var(--muted);max-width:360px;line-height:1.5}
+  .bigbtn{border:0;border-radius:999px;background:var(--accent);color:#fff;font-size:17px;font-weight:600;
+    padding:14px 28px;cursor:pointer}
+  .bigbtn:disabled{opacity:.5}
+
+  #sheet{background:var(--panel);border-top:1px solid var(--line);
+    padding:10px 0 calc(env(safe-area-inset-bottom) + 10px)}
+  #tabs{display:flex;gap:6px;padding:0 12px 10px;overflow-x:auto}
+  .tab{flex:none;border:1px solid var(--line);background:transparent;color:var(--muted);
+    border-radius:999px;padding:8px 14px;font-size:14px;cursor:pointer}
+  .tab.on{background:var(--text);color:#111;border-color:var(--text);font-weight:600}
+  #list{display:flex;gap:10px;padding:0 12px;overflow-x:auto;min-height:84px}
+  .thumb,.add{flex:none;width:76px;height:76px;border-radius:14px;border:2px solid var(--line);cursor:pointer;
+    background-color:#fff;background-image:linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%),
+      linear-gradient(45deg,#e6e6e6 25%,transparent 25%,transparent 75%,#e6e6e6 75%);
+    background-size:14px 14px;background-position:0 0,7px 7px;display:grid;place-items:center;overflow:hidden;position:relative}
+  .thumb img{max-width:90%;max-height:90%}
+  .thumb.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+  .thumb.on::after{content:"✓";position:absolute;top:3px;right:5px;background:var(--accent);color:#fff;
+    width:18px;height:18px;border-radius:50%;font-size:12px;display:grid;place-items:center}
+  .add{background:transparent;border-style:dashed;color:var(--muted);font-size:13px;text-align:center;line-height:1.2}
+  .add b{display:block;font-size:26px;font-weight:400;color:var(--text)}
+  .empty{color:var(--muted);font-size:13px;align-self:center;max-width:220px;line-height:1.4}
+
+  #adjust{padding:12px 16px 0}
+  .row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;color:var(--muted)}
+  .row label{width:72px;flex:none}
+  .row input[type=range]{flex:1;accent-color:var(--accent)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:10px;padding:8px 12px;
+    font-size:13px;cursor:pointer}
+  .btn.danger{color:#ff8a8a}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+
+  .modal{position:fixed;inset:0;background:#000c;display:grid;place-items:center;z-index:10;padding:16px}
+  .modal[hidden]{display:none}
+  .card{background:var(--panel);border-radius:18px;padding:16px;width:min(440px,100%);max-height:100%;overflow:auto}
+  .card h2{margin:0 0 4px;font-size:18px}
+  .card p{margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.45}
+  #edPrev{width:100%;max-height:46vh;object-fit:contain;border-radius:12px;display:block;margin-bottom:12px;
+    background-color:#fff;background-image:linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%),
+      linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%);
+    background-size:18px 18px;background-position:0 0,9px 9px}
+  #snapImg{width:100%;border-radius:12px;display:block;margin-bottom:12px}
+  .check{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:10px}
+  .check input{width:18px;height:18px;accent-color:var(--accent)}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <video id="video" playsinline muted autoplay></video>
+    <canvas id="cv"></canvas>
+    <div id="topbar">
+      <div id="status">Đang tải bộ nhận diện dáng người…</div>
+      <button class="iconbtn" id="btnFlip" title="Đổi camera">🔄</button>
+      <button class="iconbtn" id="btnSnap" title="Chụp ảnh">📸</button>
+    </div>
+    <div id="start">
+      <div>
+        <h1>👗 Thử Đồ</h1>
+        <p>Đứng cách camera khoảng 1,5–2 m để thấy từ đầu tới gối (hoặc tới chân). Thêm ảnh quần áo ở bên dưới rồi chạm vào để mặc thử.</p>
+        <button class="bigbtn" id="btnStart">Bật camera</button>
+        <p id="startErr" style="color:#ff8a8a;margin-top:14px"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="sheet">
+    <div id="tabs"></div>
+    <div id="list"></div>
+    <div id="adjust" hidden>
+      <div class="row"><label>Rộng</label><input type="range" id="aSx" min="40" max="220" value="100"></div>
+      <div class="row"><label>Dài</label><input type="range" id="aSy" min="40" max="220" value="100"></div>
+      <div class="row"><label>Lên / xuống</label><input type="range" id="aOy" min="-60" max="60" value="0"></div>
+      <div class="btns">
+        <button class="btn" id="aFlip">↔ Lật ngang</button>
+        <button class="btn" id="aReset">Về mặc định</button>
+        <button class="btn" id="aOff">Cởi ra</button>
+        <button class="btn danger" id="aDel">Xoá khỏi tủ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileIn" accept="image/*" hidden>
+
+<!-- Editor: remove background -->
+<div class="modal" id="editor" hidden>
+  <div class="card">
+    <h2 id="edTitle">Thêm đồ</h2>
+    <p>Nền trơn (trắng/xám) sẽ được xoá tự động. Nếu xoá lẹm vào áo, kéo thanh <b>Độ xoá nền</b> sang trái; nếu còn sót nền, kéo sang phải.</p>
+    <img id="edPrev" alt="">
+    <label class="check"><input type="checkbox" id="edOn" checked> Xoá nền</label>
+    <div class="row"><label>Độ xoá nền</label><input type="range" id="edTol" min="5" max="120" value="40"></div>
+    <div class="btns" style="justify-content:flex-end">
+      <button class="btn" id="edCancel">Huỷ</button>
+      <button class="btn primary" id="edSave">Lưu vào tủ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Snapshot -->
+<div class="modal" id="snap" hidden>
+  <div class="card">
+    <h2>Ảnh của bạn</h2>
+    <p>Trên iPhone: nhấn giữ ảnh → Lưu vào Ảnh.</p>
+    <img id="snapImg" alt="">
+    <div class="btns" style="justify-content:flex-end">
+      <button class="btn" id="snapClose">Đóng</button>
+      <a class="btn primary" id="snapDl" download="thu-do.jpg" style="text-decoration:none">Tải ảnh</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+const WASM  = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+
+const CATS = {
+  top:    { name: "Áo",        hint: "áo" },
+  bottom: { name: "Quần / Váy", hint: "quần hoặc chân váy" },
+  dress:  { name: "Đầm",       hint: "đầm / váy liền" },
+  shoes:  { name: "Giày",      hint: "giày (nên dùng ảnh 1 chiếc, chụp ngang)" },
+};
+const DEF_ADJ = () => ({ sx: 1, sy: 1, oy: 0, flip: false });
+
+const $ = s => document.querySelector(s);
+const video = $("#video"), cv = $("#cv"), ctx = cv.getContext("2d");
+const statusEl = $("#status");
+
+let landmarker = null, modelErr = null;
+let facing = "user", stream = null, camOn = false;
+let curTab = "top";
+let items = [];            // {id, cat, src, adj, img}
+let worn = { top: null, bottom: null, dress: null, shoes: null };
+
+/* ---------------- Storage (IndexedDB, falls back to memory) ---------------- */
+const DB = (() => {
+  let dbp = null;
+  const open = () => dbp ||= new Promise((res, rej) => {
+    const r = indexedDB.open("thudo", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("items", { keyPath: "id" });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  const tx = async (mode, fn) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const t = db.transaction("items", mode);
+      const req = fn(t.objectStore("items"));
+      t.oncomplete = () => res(req && req.result);
+      t.onerror = () => rej(t.error);
+    });
+  };
+  return {
+    all: () => tx("readonly", s => s.getAll()).catch(() => []),
+    put: v => tx("readwrite", s => s.put(v)).catch(() => {}),
+    del: id => tx("readwrite", s => s.delete(id)).catch(() => {}),
+  };
+})();
+const saveWorn = () => { try { localStorage.setItem("thudo-worn", JSON.stringify(worn)); } catch {} };
+const loadWorn = () => { try { Object.assign(worn, JSON.parse(localStorage.getItem("thudo-worn")) || {}); } catch {} };
+
+function loadImg(src) {
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+}
+const byId = id => items.find(i => i.id === id) || null;
+
+/* ---------------- UI: tabs, wardrobe, adjust ---------------- */
+function renderTabs() {
+  const t = $("#tabs"); t.innerHTML = "";
+  for (const [k, c] of Object.entries(CATS)) {
+    const b = document.createElement("button");
+    b.className = "tab" + (k === curTab ? " on" : "");
+    b.textContent = c.name + (worn[k] ? " •" : "");
+    b.onclick = () => { curTab = k; renderAll(); };
+    t.appendChild(b);
+  }
+}
+function renderList() {
+  const l = $("#list"); l.innerHTML = "";
+  const add = document.createElement("div");
+  add.className = "add"; add.innerHTML = "<div><b>+</b>Thêm</div>";
+  add.onclick = () => $("#fileIn").click();
+  l.appendChild(add);
+  const mine = items.filter(i => i.cat === curTab);
+  if (!mine.length) {
+    const e = document.createElement("div"); e.className = "empty";
+    e.textContent = `Chưa có ${CATS[curTab].hint}. Bấm “+ Thêm” để chọn ảnh từ máy (ảnh lưu từ web, chụp màn hình…).`;
+    l.appendChild(e);
+  }
+  for (const it of mine) {
+    const d = document.createElement("div");
+    d.className = "thumb" + (worn[it.cat] === it.id ? " on" : "");
+    const im = document.createElement("img"); im.src = it.src; d.appendChild(im);
+    d.onclick = () => toggleWear(it);
+    l.appendChild(d);
+  }
+}
+function renderAdjust() {
+  const it = byId(worn[curTab]);
+  $("#adjust").hidden = !it;
+  if (!it) return;
+  $("#aSx").value = Math.round(it.adj.sx * 100);
+  $("#aSy").value = Math.round(it.adj.sy * 100);
+  $("#aOy").value = Math.round(it.adj.oy * 100);
+}
+function renderAll() { renderTabs(); renderList(); renderAdjust(); }
+
+function toggleWear(it) {
+  if (worn[it.cat] === it.id) worn[it.cat] = null;
+  else {
+    worn[it.cat] = it.id;
+    if (it.cat === "dress") { worn.top = null; worn.bottom = null; }
+    if (it.cat === "top" || it.cat === "bottom") worn.dress = null;
+  }
+  saveWorn(); renderAll();
+}
+
+let adjTimer = null;
+function onAdj() {
+  const it = byId(worn[curTab]); if (!it) return;
+  it.adj.sx = $("#aSx").value / 100;
+  it.adj.sy = $("#aSy").value / 100;
+  it.adj.oy = $("#aOy").value / 100;
+  clearTimeout(adjTimer);
+  adjTimer = setTimeout(() => DB.put(strip(it)), 300);
+}
+const strip = it => ({ id: it.id, cat: it.cat, src: it.src, adj: it.adj });
+["#aSx", "#aSy", "#aOy"].forEach(s => $(s).addEventListener("input", onAdj));
+$("#aFlip").onclick = () => { const it = byId(worn[curTab]); if (!it) return; it.adj.flip = !it.adj.flip; DB.put(strip(it)); };
+$("#aReset").onclick = () => { const it = byId(worn[curTab]); if (!it) return; it.adj = DEF_ADJ(); DB.put(strip(it)); renderAdjust(); };
+$("#aOff").onclick = () => { worn[curTab] = null; saveWorn(); renderAll(); };
+$("#aDel").onclick = async () => {
+  const it = byId(worn[curTab]); if (!it) return;
+  const b = $("#aDel");
+  if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Bấm lần nữa để xoá"; setTimeout(() => { b.dataset.confirm = ""; b.textContent = "Xoá khỏi tủ"; }, 2500); return; }
+  b.dataset.confirm = ""; b.textContent = "Xoá khỏi tủ";
+  items = items.filter(i => i !== it); worn[curTab] = null; saveWorn();
+  await DB.del(it.id); renderAll();
+};
+
+/* ---------------- Editor: background removal ---------------- */
+let edSrc = null;      // canvas with the original (downscaled) image
+let edResult = null;   // dataURL of processed image
+
+$("#fileIn").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  try {
+    const img = await loadImg(url);
+    const max = 900, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    edSrc = document.createElement("canvas");
+    edSrc.width = Math.max(1, Math.round(img.naturalWidth * k));
+    edSrc.height = Math.max(1, Math.round(img.naturalHeight * k));
+    edSrc.getContext("2d").drawImage(img, 0, 0, edSrc.width, edSrc.height);
+    $("#edTitle").textContent = "Thêm " + CATS[curTab].name.toLowerCase();
+    $("#editor").hidden = false;
+    processEditor();
+  } catch { setStatus("Không đọc được ảnh này, thử ảnh khác nhé."); }
+  finally { URL.revokeObjectURL(url); }
+});
+let edRaf = 0;
+const schedule = () => { cancelAnimationFrame(edRaf); edRaf = requestAnimationFrame(processEditor); };
+$("#edTol").addEventListener("input", schedule);
+$("#edOn").addEventListener("change", schedule);
+$("#edCancel").onclick = () => { $("#editor").hidden = true; edSrc = null; };
+$("#edSave").onclick = async () => {
+  if (!edResult) return;
+  const it = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), cat: curTab, src: edResult, adj: DEF_ADJ() };
+  it.img = await loadImg(it.src);
+  items.push(it);
+  await DB.put(strip(it));
+  $("#editor").hidden = true; edSrc = null;
+  toggleWear(it);
+};
+
+function processEditor() {
+  if (!edSrc) return;
+  const w = edSrc.width, h = edSrc.height;
+  const id = edSrc.getContext("2d").getImageData(0, 0, w, h);
+  if ($("#edOn").checked) removeBackground(id.data, w, h, +$("#edTol").value);
+  // crop to visible content so the garment fills its box
+  const d = id.data; let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (d[(y * w + x) * 4 + 3] > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < x0) { x0 = 0; y0 = 0; x1 = w - 1; y1 = h - 1; }
+  const tmp = document.createElement("canvas"); tmp.width = w; tmp.height = h;
+  tmp.getContext("2d").putImageData(id, 0, 0);
+  const out = document.createElement("canvas");
+  out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+  out.getContext("2d").drawImage(tmp, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  edResult = out.toDataURL("image/png");
+  $("#edPrev").src = edResult;
+}
+
+function removeBackground(d, w, h, tol) {
+  // reference colour = average of the image border
+  let r = 0, g = 0, b = 0, n = 0;
+  const addPx = i => { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; };
+  for (let x = 0; x < w; x++) { addPx(x * 4); addPx(((h - 1) * w + x) * 4); }
+  for (let y = 0; y < h; y++) { addPx((y * w) * 4); addPx((y * w + w - 1) * 4); }
+  r /= n; g /= n; b /= n;
+  const t2 = tol * tol, loose2 = (tol * 1.7) ** 2, step2 = (tol * 0.3) ** 2;
+  const distRef = i => { const dr = d[i] - r, dg = d[i + 1] - g, db = d[i + 2] - b; return dr * dr + dg * dg + db * db; };
+  const distPx = (i, j) => { const dr = d[i] - d[j], dg = d[i + 1] - d[j + 1], db = d[i + 2] - d[j + 2]; return dr * dr + dg * dg + db * db; };
+
+  const bg = new Uint8Array(w * h);
+  const q = new Int32Array(w * h); let qh = 0, qt = 0;
+  const seed = p => { if (!bg[p] && distRef(p * 4) < loose2) { bg[p] = 1; q[qt++] = p; } };
+  for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+  while (qh < qt) {
+    const p = q[qh++], x = p % w, y = (p / w) | 0, i = p * 4;
+    const tryN = np => {
+      if (bg[np]) return;
+      const j = np * 4, dr = distRef(j);
+      if (dr < t2 || (dr < loose2 && distPx(i, j) < step2)) { bg[np] = 1; q[qt++] = np; }
+    };
+    if (x > 0) tryN(p - 1); if (x < w - 1) tryN(p + 1);
+    if (y > 0) tryN(p - w); if (y < h - 1) tryN(p + w);
+  }
+  for (let p = 0; p < w * h; p++) {
+    if (bg[p]) { d[p * 4 + 3] = 0; continue; }
+    const x = p % w, y = (p / w) | 0;
+    // soften the edge a little
+    if ((x > 0 && bg[p - 1]) || (x < w - 1 && bg[p + 1]) || (y > 0 && bg[p - w]) || (y < h - 1 && bg[p + w])) d[p * 4 + 3] = 150;
+  }
+}
+
+/* ---------------- Camera + pose ---------------- */
+function setStatus(s) { statusEl.textContent = s; }
+
+async function loadModel() {
+  try {
+    const fs = await FilesetResolver.forVisionTasks(WASM);
+    const opts = delegate => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: "VIDEO", numPoses: 1 });
+    try { landmarker = await PoseLandmarker.createFromOptions(fs, opts("GPU")); }
+    catch { landmarker = await PoseLandmarker.createFromOptions(fs, opts("CPU")); }
+    if (!camOn) setStatus("Sẵn sàng. Bấm “Bật camera”.");
+  } catch (e) {
+    modelErr = e; setStatus("Không tải được bộ nhận diện (cần mạng lần đầu). Tải lại trang để thử lại.");
+  }
+}
+
+async function startCam() {
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Trang phải mở bằng https:// (ví dụ link GitHub Pages) thì mới dùng được camera.");
+  }
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false,
+  });
+  video.srcObject = stream;
+  await video.play();
+  cv.classList.toggle("mirror", facing === "user");
+  sm = null; camOn = true;
+}
+
+$("#btnStart").onclick = async () => {
+  $("#btnStart").disabled = true; $("#startErr").textContent = "";
+  try { await startCam(); $("#start").hidden = true; }
+  catch (e) {
+    $("#btnStart").disabled = false;
+    $("#startErr").textContent = e.name === "NotAllowedError"
+      ? "Bạn chưa cho phép camera. Vào cài đặt trình duyệt → cho phép Camera cho trang này rồi thử lại."
+      : (e.message || "Không mở được camera.");
+  }
+};
+$("#btnFlip").onclick = async () => {
+  if (!camOn) return;
+  facing = facing === "user" ? "environment" : "user";
+  try { await startCam(); } catch { facing = facing === "user" ? "environment" : "user"; await startCam().catch(() => {}); }
+};
+
+/* ---------------- Drawing ---------------- */
+let sm = null, lastSeen = 0, lastTs = -1;
+function smooth(lms) {
+  if (!sm || sm.length !== lms.length) { sm = lms.map(p => ({ x: p.x, y: p.y, v: p.visibility ?? 1 })); return; }
+  for (let i = 0; i < lms.length; i++) {
+    const p = lms[i], s = sm[i];
+    const move = Math.hypot(p.x - s.x, p.y - s.y);
+    const a = Math.min(0.85, 0.35 + move * 12);   // follow fast moves quickly, damp jitter when still
+    s.x += (p.x - s.x) * a; s.y += (p.y - s.y) * a; s.v = p.visibility ?? 1;
+  }
+}
+const P = i => ({ x: sm[i].x * cv.width, y: sm[i].y * cv.height });
+const vis = (...ids) => ids.every(i => sm[i] && sm[i].v > 0.5);
+const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function upright(a) { if (a > Math.PI / 2) a -= Math.PI; if (a < -Math.PI / 2) a += Math.PI; return a; }
+
+function drawRot(img, cx, cy, ang, w, h, y0, flip) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
+  if (flip) ctx.scale(-1, 1);
+  ctx.drawImage(img, -w / 2, y0, w, h);
+  ctx.restore();
+}
+
+function body() {
+  const ls = P(11), rs = P(12), lh = P(23), rh = P(24);
+  const ms = mid(ls, rs), mh = mid(lh, rh);
+  const sw = dist(ls, rs), hw = dist(lh, rh), torso = dist(ms, mh);
+  const knees = vis(25, 26) ? mid(P(25), P(26)) : null;
+  const ankles = vis(27, 28) ? mid(P(27), P(28)) : null;
+  const leg = ankles ? dist(mh, ankles) : knees ? dist(mh, knees) * 2.05 : torso * 1.6;
+  return { ls, rs, lh, rh, ms, mh, sw, hw, torso, knees, leg,
+    angS: upright(Math.atan2(ls.y - rs.y, ls.x - rs.x)),
+    angH: upright(Math.atan2(lh.y - rh.y, lh.x - rh.x)) };
+}
+
+function drawTop(it, B) {
+  const W = Math.max(B.sw, B.torso * 0.45) * 2.0 * it.adj.sx;
+  const H = B.torso * 1.5 * it.adj.sy;
+  drawRot(it.img, B.ms.x, B.ms.y, B.angS, W, H, -B.torso * 0.18 + it.adj.oy * B.torso, it.adj.flip);
+}
+function drawBottom(it, B) {
+  const W = Math.max(B.hw, B.leg * 0.16) * 2.6 * it.adj.sx;
+  const H = B.leg * 1.12 * it.adj.sy;
+  drawRot(it.img, B.mh.x, B.mh.y, B.angH, W, H, -B.leg * 0.08 + it.adj.oy * B.leg, it.adj.flip);
+}
+function drawDress(it, B) {
+  const toKnee = B.knees ? dist(B.ms, B.knees) : B.torso * 2.0;
+  const W = Math.max(B.sw, B.torso * 0.45) * 2.1 * it.adj.sx;
+  const H = toKnee * 1.3 * it.adj.sy;
+  drawRot(it.img, B.ms.x, B.ms.y, B.angS, W, H, -B.torso * 0.18 + it.adj.oy * B.torso, it.adj.flip);
+}
+function drawShoes(it, B) {
+  const ar = it.img.naturalHeight / it.img.naturalWidth;
+  const W = Math.max(B.hw, B.torso * 0.3) * 1.1 * it.adj.sx;
+  const H = W * ar * it.adj.sy;
+  for (const [ank, heel, toe, mirror] of [[27, 29, 31, false], [28, 30, 32, true]]) {
+    if (!vis(ank)) continue;
+    const a = P(ank), he = P(heel), to = P(toe);
+    const cx = (he.x + to.x) / 2, base = Math.max(he.y, to.y, a.y);
+    drawRot(it.img, cx, base, 0, W, H, -H * 0.85 + it.adj.oy * H, mirror !== it.adj.flip);
+  }
+}
+
+function drawOutfit() {
+  const B = body();
+  const need = [];
+  const sh = byId(worn.shoes), bo = byId(worn.bottom), dr = byId(worn.dress), tp = byId(worn.top);
+  if (sh?.img) { if (vis(27) || vis(28)) drawShoes(sh, B); else need.push("chân"); }
+  if (bo?.img) { if (vis(23, 24)) drawBottom(bo, B); else need.push("hông"); }
+  if (dr?.img) { if (vis(11, 12, 23, 24)) drawDress(dr, B); else need.push("vai và hông"); }
+  if (tp?.img) { if (vis(11, 12, 23, 24)) drawTop(tp, B); else need.push("vai và hông"); }
+  return need;
+}
+
+let lastMsg = "";
+function loop() {
+  requestAnimationFrame(loop);
+  if (!camOn || video.readyState < 2 || !video.videoWidth) return;
+  if (cv.width !== video.videoWidth || cv.height !== video.videoHeight) {
+    cv.width = video.videoWidth; cv.height = video.videoHeight;
+  }
+  ctx.drawImage(video, 0, 0, cv.width, cv.height);
+  const now = performance.now();
+  if (landmarker && now > lastTs) {
+    lastTs = now;
+    try {
+      const r = landmarker.detectForVideo(video, now);
+      if (r.landmarks && r.landmarks[0]) { smooth(r.landmarks[0]); lastSeen = now; }
+    } catch {}
+  }
+  let msg;
+  const anyWorn = Object.values(worn).some(Boolean);
+  if (!landmarker) msg = modelErr ? "Không tải được bộ nhận diện. Kiểm tra mạng rồi tải lại trang." : "Đang tải bộ nhận diện dáng người…";
+  else if (!sm || now - lastSeen > 600) msg = "Chưa thấy người — lùi ra xa để camera thấy cả thân.";
+  else {
+    const need = drawOutfit();
+    msg = need.length ? `Lùi ra để thấy ${[...new Set(need)].join(", ")}.` : anyWorn ? "Đang mặc thử ✨" : "Chọn một món đồ bên dưới để mặc thử.";
+  }
+  if (msg !== lastMsg) { setStatus(msg); lastMsg = msg; }
+}
+
+/* ---------------- Snapshot ---------------- */
+let snapUrl = null;
+$("#btnSnap").onclick = () => {
+  if (!camOn || !cv.width) return;
+  const c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height;
+  const x = c.getContext("2d");
+  if (facing === "user") { x.translate(c.width, 0); x.scale(-1, 1); }
+  x.drawImage(cv, 0, 0);
+  c.toBlob(b => {
+    if (!b) return;
+    if (snapUrl) URL.revokeObjectURL(snapUrl);
+    snapUrl = URL.createObjectURL(b);
+    $("#snapImg").src = snapUrl; $("#snapDl").href = snapUrl;
+    $("#snap").hidden = false;
+  }, "image/jpeg", 0.92);
+};
+$("#snapClose").onclick = () => { $("#snap").hidden = true; };
+
+/* ---------------- Boot ---------------- */
+(async () => {
+  loadWorn();
+  const saved = await DB.all();
+  for (const s of saved || []) {
+    try { items.push({ ...s, adj: { ...DEF_ADJ(), ...s.adj }, img: await loadImg(s.src) }); } catch {}
+  }
+  for (const k of Object.keys(worn)) if (worn[k] && !byId(worn[k])) worn[k] = null;
+  renderAll();
+  requestAnimationFrame(loop);
+  loadModel();
+})();
+</script>
+</body>
+</html>
