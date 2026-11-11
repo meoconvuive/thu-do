@@ -158,6 +158,8 @@ const CATS = {
   bottom: { name: "Quần / Váy", hint: "quần hoặc chân váy" },
   dress:  { name: "Đầm",       hint: "đầm / váy liền" },
   shoes:  { name: "Giày",      hint: "giày (nên dùng ảnh 1 chiếc, chụp ngang)" },
+  glasses:{ name: "Kính",      hint: "mắt kính (ảnh chụp thẳng mặt trước)" },
+  hat:    { name: "Mũ",        hint: "mũ / nón (ảnh chụp thẳng mặt trước)" },
 };
 const DEF_ADJ = () => ({ sx: 1, sy: 1, oy: 0, flip: false });
 
@@ -169,7 +171,7 @@ let landmarker = null, modelErr = null;
 let facing = "user", stream = null, camOn = false;
 let curTab = "top";
 let items = [];            // {id, cat, src, adj, img}
-let worn = { top: null, bottom: null, dress: null, shoes: null };
+let worn = { top: null, bottom: null, dress: null, shoes: null, glasses: null, hat: null };
 
 /* ---------------- Storage (IndexedDB, falls back to memory) ---------------- */
 const DB = (() => {
@@ -476,14 +478,40 @@ function drawShoes(it, B) {
   }
 }
 
+// Face: 2 = left eye, 5 = right eye, 7 = left ear, 8 = right ear (person's left/right)
+function face() {
+  const le = P(2), re = P(5), em = mid(le, re);
+  const eyeD = dist(le, re);
+  const earD = vis(7, 8) ? dist(P(7), P(8)) : eyeD * 2.4;
+  return { em, eyeD, earD: Math.max(earD, eyeD * 1.6), ang: upright(Math.atan2(le.y - re.y, le.x - re.x)) };
+}
+function drawGlasses(it, F) {
+  const ar = it.img.naturalHeight / it.img.naturalWidth;
+  const W = F.eyeD * 2.35 * it.adj.sx;
+  const H = W * ar * it.adj.sy;
+  drawRot(it.img, F.em.x, F.em.y, F.ang, W, H, -H * 0.5 + it.adj.oy * F.eyeD, it.adj.flip);
+}
+function drawHat(it, F) {
+  const ar = it.img.naturalHeight / it.img.naturalWidth;
+  const W = F.earD * 1.6 * it.adj.sx;
+  const H = W * ar * it.adj.sy;
+  // brim sits a bit above the eyebrows; hat grows upward from there
+  drawRot(it.img, F.em.x, F.em.y, F.ang, W, H, -F.eyeD * 0.9 - H * 0.85 + it.adj.oy * F.earD, it.adj.flip);
+}
+
 function drawOutfit() {
   const B = body();
   const need = [];
   const sh = byId(worn.shoes), bo = byId(worn.bottom), dr = byId(worn.dress), tp = byId(worn.top);
+  const gl = byId(worn.glasses), ht = byId(worn.hat);
   if (sh?.img) { if (vis(27) || vis(28)) drawShoes(sh, B); else need.push("chân"); }
   if (bo?.img) { if (vis(23, 24)) drawBottom(bo, B); else need.push("hông"); }
   if (dr?.img) { if (vis(11, 12, 23, 24)) drawDress(dr, B); else need.push("vai và hông"); }
   if (tp?.img) { if (vis(11, 12, 23, 24)) drawTop(tp, B); else need.push("vai và hông"); }
+  if (gl?.img || ht?.img) {
+    if (vis(2, 5)) { const F = face(); if (ht?.img) drawHat(ht, F); if (gl?.img) drawGlasses(gl, F); }
+    else need.push("mặt (nhìn thẳng camera)");
+  }
   return need;
 }
 
